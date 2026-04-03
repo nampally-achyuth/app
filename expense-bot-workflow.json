@@ -1,0 +1,914 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        176,
+        2064
+      ],
+      "id": "ce3876c2-5d21-498f-87b2-ee974239b45e",
+      "webhookId": "telegram-expense-bot",
+      "credentials": {
+        "telegramApi": {
+          "id": "Jml5sqjNyCglienc",
+          "name": "me"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.message.text }}",
+                    "rightValue": "balance",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    },
+                    "id": "ad9d04ce-84fb-47c9-990e-a6b911d52453"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "balance"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.message.photo }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "array",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    },
+                    "id": "3ee0792a-c57b-4cf4-b9cb-132d73b2245e"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "image"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.message.text }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEmpty"
+                    },
+                    "id": "5aff748b-af2e-465b-b6c8-fa91efe0b5d0"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "text"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Route Message Type",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        400,
+        2048
+      ],
+      "id": "a83dc752-5e26-4a09-a206-1efe6c7b6253"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1y5KaeG4sKj_dvJh-IxWB9GIpVBJEmilyPm8Dn5MYAJM",
+          "mode": "list",
+          "cachedResultName": "Automations",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1y5KaeG4sKj_dvJh-IxWB9GIpVBJEmilyPm8Dn5MYAJM/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Expenses",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1y5KaeG4sKj_dvJh-IxWB9GIpVBJEmilyPm8Dn5MYAJM/edit#gid=0"
+        },
+        "options": {}
+      },
+      "name": "Get All Expenses",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        752,
+        1824
+      ],
+      "id": "c2a9a49b-7a4f-4cb7-ac13-b2bfe89675ed",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "BdB6JU9ZhvD0guDk",
+          "name": "automations"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nlet totalIncome = 0;\nlet totalExpense = 0;\n\nfor (const item of items) {\n  const amount = parseFloat(item.json.Amount) || 0;\n  const type = (item.json.Type || '').toLowerCase();\n  if (type === 'income') {\n    totalIncome += amount;\n  } else {\n    totalExpense += amount;\n  }\n}\n\nconst balance = totalIncome - totalExpense;\nreturn [{ json: { totalIncome, totalExpense, balance } }];"
+      },
+      "name": "Calculate Balance",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1008,
+        1824
+      ],
+      "id": "39c96f4a-fe6e-4f14-97c3-1635e01c3b84"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ '💰 *Your Balance Summary*\\n\\n📈 Total Income: ₹' + $json.totalIncome.toFixed(2) + '\\n📉 Total Expenses: ₹' + $json.totalExpense.toFixed(2) + '\\n🏦 Current Balance: ₹' + $json.balance.toFixed(2) }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "name": "Send Balance",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1328,
+        1840
+      ],
+      "id": "542dc4f0-2603-4e72-8638-ae2e270b4b79",
+      "webhookId": "3e7f6099-8b52-46db-b9fe-fae7f430203b",
+      "credentials": {
+        "telegramApi": {
+          "id": "Jml5sqjNyCglienc",
+          "name": "me"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const output = $input.item.json.output || $input.item.json.text || JSON.stringify($input.item.json);\nconst cleaned = output.replace(/```json|```/g, '').trim();\nconst parsed = JSON.parse(cleaned);\nreturn { json: parsed };"
+      },
+      "name": "Parse Receipt JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1696,
+        2064
+      ],
+      "id": "1f54653e-da1c-4b2c-9fcf-7203d5391a9a"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1y5KaeG4sKj_dvJh-IxWB9GIpVBJEmilyPm8Dn5MYAJM",
+          "mode": "list",
+          "cachedResultName": "Automations",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1y5KaeG4sKj_dvJh-IxWB9GIpVBJEmilyPm8Dn5MYAJM/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Expenses",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1y5KaeG4sKj_dvJh-IxWB9GIpVBJEmilyPm8Dn5MYAJM/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Date": "={{ $json.Date }}",
+            "Title": "={{ $json.Title }}",
+            "Amount": "={{ $json.Amount }}",
+            "Type": "={{ $json.Type }}",
+            "Category": "={{ $json.Category }}",
+            "Description": "={{ $json.Description }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Title",
+              "displayName": "Title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Amount",
+              "displayName": "Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Type",
+              "displayName": "Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Category",
+              "displayName": "Category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Description",
+              "displayName": "Description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "name": "Save Receipt to Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2016,
+        2064
+      ],
+      "id": "42fb7524-cf5a-4125-b0bd-3b1efa0eccca",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "BdB6JU9ZhvD0guDk",
+          "name": "automations"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ '✅ *Receipt Saved!*\\n\\n📅 Date: ' + $('Parse Receipt JSON').item.json.Date + '\\n🏪 ' + $('Parse Receipt JSON').item.json.Title + '\\n💸 Amount: ₹' + $('Parse Receipt JSON').item.json.Amount + '\\n🏷️ Category: ' + $('Parse Receipt JSON').item.json.Category + '\\n📝 ' + $('Parse Receipt JSON').item.json.Description }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "name": "Confirm Receipt Saved",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2288,
+        2064
+      ],
+      "id": "1cb2673d-a711-4cc9-a06f-76caae3b3a59",
+      "webhookId": "9eb4938f-9378-4b4d-b2b2-4e2d4e734a80",
+      "credentials": {
+        "telegramApi": {
+          "id": "Jml5sqjNyCglienc",
+          "name": "me"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const output = $input.item.json.output || $input.item.json.text || JSON.stringify($input.item.json);\nconst cleaned = output.replace(/```json|```/g, '').trim();\nconst parsed = JSON.parse(cleaned);\nreturn { json: parsed };"
+      },
+      "name": "Parse Text Expense JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1072,
+        2512
+      ],
+      "id": "25ae7c16-83ad-4373-82b8-67f848281e0a"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1y5KaeG4sKj_dvJh-IxWB9GIpVBJEmilyPm8Dn5MYAJM",
+          "mode": "list",
+          "cachedResultName": "Automations",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1y5KaeG4sKj_dvJh-IxWB9GIpVBJEmilyPm8Dn5MYAJM/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Expenses",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1y5KaeG4sKj_dvJh-IxWB9GIpVBJEmilyPm8Dn5MYAJM/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Date": "={{ $json.Date }}",
+            "Title": "={{ $json.Title }}",
+            "Amount": "={{ $json.Amount }}",
+            "Type": "={{ $json.Type }}",
+            "Category": "={{ $json.Category }}",
+            "Description": "={{ $json.Description }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Title",
+              "displayName": "Title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Amount",
+              "displayName": "Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Type",
+              "displayName": "Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Category",
+              "displayName": "Category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Description",
+              "displayName": "Description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "name": "Save Text Expense to Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1264,
+        2512
+      ],
+      "id": "b29025ff-ad23-4560-9daf-87270e8ccf6c",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "BdB6JU9ZhvD0guDk",
+          "name": "automations"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ '✅ *Expense Logged!*\\n\\n📅 Date: ' + $('Parse Text Expense JSON').item.json.Date + '\\n🏪 ' + $('Parse Text Expense JSON').item.json.Title + '\\n💸 Amount: ₹' + $('Parse Text Expense JSON').item.json.Amount + '\\n🏷️ Category: ' + $('Parse Text Expense JSON').item.json.Category + '\\n📝 ' + $('Parse Text Expense JSON').item.json.Description }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "name": "Confirm Text Expense Saved",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1472,
+        2512
+      ],
+      "id": "145c1d21-7e62-4e60-b39f-1cb66191bef1",
+      "webhookId": "8b0f3296-9a92-4147-bb5c-1aa99b620e1d",
+      "credentials": {
+        "telegramApi": {
+          "id": "Jml5sqjNyCglienc",
+          "name": "me"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "fileId": "={{ $('Telegram Trigger').item.json.message.photo[$('Telegram Trigger').item.json.message.photo.length - 1].file_id }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        688,
+        2064
+      ],
+      "id": "48bd1396-7493-4d68-ab31-14e2e407e645",
+      "name": "Get a file",
+      "webhookId": "d4fe0721-437e-4958-9ae0-29100c63ffbf",
+      "credentials": {
+        "telegramApi": {
+          "id": "Jml5sqjNyCglienc",
+          "name": "me"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-tesseractjs.tesseractNode",
+      "typeVersion": 1,
+      "position": [
+        896,
+        2064
+      ],
+      "id": "b8ff270e-7c74-4aa1-8d86-b25c34ee8c9d",
+      "name": "Tesseract"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.text + '\n\nExtract the transaction details from the above receipt text. Return ONLY a valid JSON object in this exact format:\n{\n  \"Date\": \"YYYY-MM-DD\",\n  \"Title\": \"Merchant or store name\",\n  \"Amount\": 0.00,\n  \"Type\": \"expense or income\",\n  \"Category\": \"Food/Transport/Shopping/Bills/Entertainment/Health/Salary/Received/Other\",\n  \"Description\": \"Brief description of the transaction\"\n}\n\nFor INCOME: Use Type='income' and Category as 'Salary' or 'Received'\nFor EXPENSE: Use Type='expense' with appropriate category\n\nIf no date is found, use: ' + $now.format('YYYY-MM-DD') }}",
+        "options": {
+          "systemMessage": "You are a precise transaction extraction assistant. Always respond with only a valid JSON object. No markdown, no explanation, no code blocks — just raw JSON."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1200,
+        2064
+      ],
+      "id": "1557e306-5761-4034-9fb3-31705cc0fa0d",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "qwen/qwen3.6-plus:free",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        2240
+      ],
+      "id": "0e19078c-dc1e-4f08-b8d1-701e09840509",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "DkyA5nSPTIbjOKSR",
+          "name": "or"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Telegram Trigger').item.json.message.text + '\n\nExtract the transaction details from the above message. Return ONLY a valid JSON object in this exact format:\n{\n  \"Date\": \"YYYY-MM-DD\",\n  \"Title\": \"What was purchased, paid for, or received from\",\n  \"Amount\": 0.00,\n  \"Type\": \"expense or income\",\n  \"Category\": \"Food/Transport/Shopping/Bills/Entertainment/Health/Salary/Received/Other\",\n  \"Description\": \"Brief description of the transaction\"\n}\n\nFor INCOME: Use Type='income' and Category as 'Salary' or 'Received'\nFor EXPENSE: Use Type='expense' with appropriate category\n\nToday is: ' + $now.format('YYYY-MM-DD') }}",
+        "options": {
+          "systemMessage": "You are a precise transaction extraction assistant. Always respond with only a valid JSON object. No markdown, no explanation, no code blocks — just raw JSON."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        784,
+        2512
+      ],
+      "id": "8efc9cc9-372a-4659-88f5-ccfb799615f6",
+      "name": "AI Agent1"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        784,
+        2704
+      ],
+      "id": "06a5a8ae-fd1f-4583-99c7-014ddfb92676",
+      "name": "OpenRouter Chat Model1",
+      "credentials": {
+        "openRouterApi": {
+          "id": "DkyA5nSPTIbjOKSR",
+          "name": "or"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ Number($json.Amount) > 0 && $json.Title && $json.Title.toLowerCase() !== 'unknown' && $json.Title.toLowerCase() !== 'empty' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "id": "receipt-validation"
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "name": "Validate Receipt",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1904,
+        2064
+      ],
+      "id": "validate-receipt-id"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "❌ Invalid receipt! Could not extract valid expense details from the image. Please make sure the receipt is clear and contains:\n• Date\n• Merchant name\n• Amount\n\nTry again with a clearer image.",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "name": "Invalid Receipt Message",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2288,
+        1920
+      ],
+      "id": "invalid-receipt-msg-id",
+      "webhookId": "invalid-receipt-webhook",
+      "credentials": {
+        "telegramApi": {
+          "id": "Jml5sqjNyCglienc",
+          "name": "me"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ Number($json.Amount) > 0 && $json.Title && $json.Title.toLowerCase() !== 'unknown' && $json.Title.toLowerCase() !== 'empty' && $json.Title.toLowerCase() !== 'hello' && $json.Title.toLowerCase() !== 'hi' && $json.Title.length > 2 }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "id": "text-validation"
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "name": "Validate Text Expense",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1360,
+        2512
+      ],
+      "id": "validate-text-expense-id"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "❌ Invalid message! I couldn't extract valid transaction details. Please provide:\n• Item/Merchant name\n• Amount\n• Category (Food, Transport, Shopping, Bills, etc.)\n\nExample: \"Lunch at cafe - 250 - Food\"",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "name": "Invalid Text Message",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1680,
+        2400
+      ],
+      "id": "invalid-text-msg-id",
+      "webhookId": "invalid-text-webhook",
+      "credentials": {
+        "telegramApi": {
+          "id": "Jml5sqjNyCglienc",
+          "name": "me"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Route Message Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Message Type": {
+      "main": [
+        [
+          {
+            "node": "Get All Expenses",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get a file",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get All Expenses": {
+      "main": [
+        [
+          {
+            "node": "Calculate Balance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Balance": {
+      "main": [
+        [
+          {
+            "node": "Send Balance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Receipt JSON": {
+      "main": [
+        [
+          {
+            "node": "Validate Receipt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Receipt": {
+      "main": [
+        [
+          {
+            "node": "Save Receipt to Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Invalid Receipt Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Invalid Receipt Message": {
+      "main": [
+        []
+      ]
+    },
+    "Save Receipt to Sheet": {
+      "main": [
+        [
+          {
+            "node": "Confirm Receipt Saved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Text Expense JSON": {
+      "main": [
+        [
+          {
+            "node": "Validate Text Expense",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Text Expense": {
+      "main": [
+        [
+          {
+            "node": "Save Text Expense to Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Invalid Text Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Invalid Text Message": {
+      "main": [
+        []
+      ]
+    },
+    "Save Text Expense to Sheet": {
+      "main": [
+        [
+          {
+            "node": "Confirm Text Expense Saved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a file": {
+      "main": [
+        [
+          {
+            "node": "Tesseract",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tesseract": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse Receipt JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent1": {
+      "main": [
+        [
+          {
+            "node": "Parse Text Expense JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9ce498faa85fdc28027ceedc219550e751da3f9410f2334fa034841d2f3e34b4"
+  }
+}
